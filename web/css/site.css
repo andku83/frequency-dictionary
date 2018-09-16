@@ -113,3 +113,15 @@ a.desc:after {
 .nav > li > form > button.logout:focus {
     outline: none;
 }
+
+
+
+
+
+
+@media (min-width: 800px) {
+    .modal-dialog {
+        width: auto;
+        margin: 30px 20px;
+    }
+}

@@ -2,6 +2,8 @@
 
 namespace app\controllers;
 
+use app\components\dictionary\Dictionary;
+use app\models\search\WordSearch;
 use Yii;
 use yii\filters\AccessControl;
 use yii\web\Controller;
@@ -62,6 +64,37 @@ class SiteController extends Controller
     public function actionIndex()
     {
         return $this->render('index');
+    }
+
+    public function actionTextLoad()
+    {
+        if (Yii::$app->request->isAjax) {
+            $this->layout = false;
+            $this->renderAjax('text-load');
+        }
+        return $this->render('text-load');
+    }
+
+    public function actionProcessing()
+    {
+        Dictionary::calculateMultiple();
+
+        return $this->redirect(['/site/index']);
+    }
+
+    /**
+     * Lists all Word models.
+     * @return mixed
+     */
+    public function actionWordList()
+    {
+        $searchModel = new WordSearch();
+        $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
+
+        return $this->render('_words', [
+            'searchModel' => $searchModel,
+            'dataProvider' => $dataProvider,
+        ]);
     }
 
     /**
