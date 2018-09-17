@@ -2,7 +2,6 @@
 
 namespace app\models\search;
 
-use Yii;
 use yii\base\Model;
 use yii\data\ActiveDataProvider;
 use app\models\Word;
@@ -19,7 +18,7 @@ class WordSearch extends Word
     {
         return [
             [['id'], 'integer'],
-            [['lemma', 'context'], 'safe'],
+            [['lemma'], 'string'],
             [['score', 'frequency', 'dispersion'], 'number'],
         ];
     }
@@ -42,7 +41,7 @@ class WordSearch extends Word
      */
     public function search($params)
     {
-        $query = Word::find();
+        $query = Word::find()->with('textWord.text');
 
         // add conditions that should always apply here
 
@@ -74,8 +73,7 @@ class WordSearch extends Word
             'dispersion' => $this->dispersion,
         ]);
 
-        $query->andFilterWhere(['like', 'lemma', $this->lemma])
-            ->andFilterWhere(['like', 'context', $this->context]);
+        $query->andFilterWhere(['like', 'lemma', $this->lemma]);
 
         return $dataProvider;
     }

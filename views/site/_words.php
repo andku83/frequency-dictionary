@@ -6,6 +6,7 @@
 
 use app\models\Word;
 use app\models\search\WordSearch;
+use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\helpers\Url;
 use yii\widgets\Pjax;
@@ -37,7 +38,13 @@ if (empty($searchModel) || empty($dataProvider)) {
 //        'lemma',
         'frequency',
         'dispersion',
-        //'context:ntext',
+        [
+            'attribute' => 'context',
+            'format' => 'raw',
+            'value' => function (Word $model) {
+                return ArrayHelper::getValue($model->textWord, 'context') . ' ' . ArrayHelper::getValue($model->textWord, 'text.name');
+            },
+        ],
     ],
 ]); ?>
 

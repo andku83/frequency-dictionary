@@ -23,7 +23,6 @@ class m180915_205559_word_and_text extends Migration
             'score' => $this->decimal(),
             'frequency' => $this->decimal(),
             'dispersion' => $this->decimal(),
-            'context' => $this->json(),
         ], $tableOptions);
 
         $this->createTable("{{%text}}", [
@@ -38,7 +37,7 @@ class m180915_205559_word_and_text extends Migration
             'text_id' => $this->integer(),
             'word_id' => $this->integer(),
             'count_words' => $this->integer(),
-            'context' => $this->json(),
+            'context' => $this->text(),
         ], $tableOptions);
 
         $this->createIndex('idx-text_word', '{{%text_word}}', ['text_id',  'word_id']);

@@ -2,8 +2,6 @@
 
 namespace app\models;
 
-use Yii;
-
 /**
  * This is the model class for table "{{%word}}".
  *
@@ -15,6 +13,7 @@ use Yii;
  * @property string $context
  *
  * @property TextWord[] $textWords
+ * @property TextWord $textWord
  */
 class Word extends \yii\db\ActiveRecord
 {
@@ -59,6 +58,15 @@ class Word extends \yii\db\ActiveRecord
     public function getTextWords()
     {
         return $this->hasMany(TextWord::class, ['word_id' => 'id']
+        )->inverseOf('word');
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getTextWord()
+    {
+        return $this->hasOne(TextWord::class, ['word_id' => 'id']
         )->inverseOf('word');
     }
 
