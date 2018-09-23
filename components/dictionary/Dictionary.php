@@ -87,7 +87,7 @@ class Dictionary
         if ($text && $text->file_time == $fileTime){
             return ;
         } else {
-            Text::deleteAll([['name' => $fileName]]);
+            Text::deleteAll(['name' => $fileName]);
             $text = new Text();
         }
 
