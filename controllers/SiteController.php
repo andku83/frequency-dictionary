@@ -102,6 +102,7 @@ class SiteController extends Controller
     {
         if (Yii::$app->request->isAjax) {
             $this->layout = false;
+            return $this->renderAjax('text-load');
         }
         return $this->render('text-load');
     }
@@ -110,6 +111,7 @@ class SiteController extends Controller
     {
         if (Yii::$app->request->isAjax) {
             $this->layout = false;
+            return $this->renderAjax('process', ['result' => Dictionary::getAnswer()]);
         }
         return $this->render('process', ['result' => Dictionary::getAnswer()]);
     }

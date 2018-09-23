@@ -88,6 +88,10 @@ $(document).ready($(function () {
             if (state === 'process') {
                 setTimeout(process, 1);
             }
+        }).error(function (data) {
+            $('.btn-control button[data-action=start]').removeClass('disabled');
+
+            alert('Error!')
         });
     }
 }));

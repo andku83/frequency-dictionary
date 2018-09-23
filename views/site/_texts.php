@@ -35,6 +35,5 @@ use yii\data\ActiveDataProvider;
         ],
     ],
 ]); ?>
-['label' => 'Text Corpus', 'url' => ['/site/text-load'], 'linkOptions' => ['data-id' => 'text-load', 'class' => 'show-modal']],
 
 <?php Pjax::end(); ?>
