@@ -2,21 +2,26 @@
 
 namespace app\models;
 
-use Yii;
-
 /**
  * This is the model class for table "{{%text}}".
  *
  * @property int $id
  * @property string $name
- * @property string $filePath
+ * @property string $file_path
+ * @property integer $file_time
+ * @property integer $status
  * @property int $length
  * @property int $count_words
  *
+ * @property Word[] $words
  * @property TextWord[] $textWords
  */
 class Text extends \yii\db\ActiveRecord
 {
+    const STATUS_DEFAULT = self::STATUS_NOT_PROCESSED;
+    const STATUS_NOT_PROCESSED = 0;
+    const STATUS_PROCESSED = 1;
+
     /**
      * {@inheritdoc}
      */
@@ -31,8 +36,10 @@ class Text extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['length', 'count_words'], 'integer'],
-            [['name', 'filePath'], 'string', 'max' => 255],
+            [['length', 'count_words', 'file_time', 'status'], 'integer'],
+            [['name', 'file_path'], 'string', 'max' => 255],
+
+            [['status'], 'default', 'value' => self::STATUS_DEFAULT],
         ];
     }
 
@@ -44,7 +51,9 @@ class Text extends \yii\db\ActiveRecord
         return [
             'id' => 'ID',
             'name' => 'Name',
-            'filePath' => 'File Path',
+            'file_path' => 'File Path',
+            'file_time' => 'File Time',
+            'status' => 'Status',
             'length' => 'Length',
             'count_words' => 'Count Words',
         ];

@@ -18,8 +18,8 @@ class WordSearch extends Word
     {
         return [
             [['id'], 'integer'],
-            [['lemma'], 'string'],
-            [['score', 'frequency', 'dispersion'], 'number'],
+            [['headword'], 'string'],
+//            [['score', 'frequency', 'dispersion'], 'number'],
         ];
     }
 
@@ -50,7 +50,7 @@ class WordSearch extends Word
             'sort' => [
                 'defaultOrder' => [
                     'score' => SORT_DESC,
-                    'lemma' => SORT_ASC,
+                    'headword' => SORT_ASC,
                     'frequency' => SORT_DESC,
                     'dispersion' => SORT_DESC,
                 ]
@@ -68,12 +68,12 @@ class WordSearch extends Word
         // grid filtering conditions
         $query->andFilterWhere([
             'id' => $this->id,
-            'score' => $this->score,
-            'frequency' => $this->frequency,
-            'dispersion' => $this->dispersion,
+//            'score' => $this->score,
+//            'frequency' => $this->frequency,
+//            'dispersion' => $this->dispersion,
         ]);
 
-        $query->andFilterWhere(['like', 'lemma', $this->lemma]);
+        $query->andFilterWhere(['like', 'headword', $this->headword]);
 
         return $dataProvider;
     }

@@ -16,12 +16,13 @@ use yii\data\ActiveDataProvider;
 <?php Pjax::begin([
     'id' => 'text-list'
 ]); ?>
-
+<?php $totalSize = (int)(Text::find()->sum('length') / 1024) ?>
 <?= GridView::widget([
     'dataProvider' => new ActiveDataProvider([
         'query' => Text::find(),
-        'pagination' => false
+        'pagination' => false,
     ]),
+    'summary' => "Total items <strong>$totalSize Kb</strong>",
     'filterModel' => false,
     'columns' => [
         [
@@ -29,10 +30,11 @@ use yii\data\ActiveDataProvider;
             'label' => 'File',
             'format' => 'raw',
             'value' => function ($model) {
-                return Html::a($model['name'], Url::to(['/site/show-text', 'id' => $model->id]));
+                return Html::a($model['name'], Url::to(['/site/show-text', 'id' => $model->id]), ['data-id' => 'show-text-'.$model->id, 'class' => 'show-modal']);
             },
         ],
     ],
 ]); ?>
+['label' => 'Text Corpus', 'url' => ['/site/text-load'], 'linkOptions' => ['data-id' => 'text-load', 'class' => 'show-modal']],
 
 <?php Pjax::end(); ?>

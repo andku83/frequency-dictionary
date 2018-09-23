@@ -20,7 +20,7 @@ class WordQuery extends \yii\db\ActiveQuery
      */
     public function byName($name)
     {
-        return $this->andWhere(['lemma' => $name]);
+        return $this->andWhere(['headword' => $name]);
     }
 
     /**

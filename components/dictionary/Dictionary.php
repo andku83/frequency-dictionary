@@ -15,44 +15,118 @@ use yii\base\ErrorException;
  */
 class Dictionary
 {
+    const MAX_EXECUTION_TIME = 2; // max time for work script
+
     /**
-     * @var array|null
+     * @var array
      */
-    static $stopWords;
+    protected static $stopWords;
+
+    /**
+     * @var array
+     */
+    protected static $files = [];
+
+    /**
+     * @param string $path
+     * @param bool $truncate
+     * @return int
+     */
+    public static function calculateMultiple($truncate = false, $path = '')
+    {
+        if ($truncate) {
+            // clear DB
+            static::truncate();
+        }
+
+        foreach (static::getFiles($path) as $file) {
+            static::addFile($file);
+
+            if (static::checkTimeToEnd()){
+                return static::getAnswer();
+            }
+        }
+
+        $texts = Text::find()->andWhere(['status' => Text::STATUS_NOT_PROCESSED])->all();
+        foreach ($texts as $text) {
+
+            static::calculateText($text);
+
+            if (static::checkTimeToEnd()){
+                return static::getAnswer();
+            }
+        }
+
+        static::calculateSum();
+
+        return static::getAnswer();
+    }
+
+    /**
+     *
+     */
+    public static function truncate()
+    {
+        TextWord::deleteAll();
+        Text::deleteAll();
+        Word::deleteAll();
+    }
 
     /**
      * @param $filePath
      * @throws ErrorException
      */
-    public static function calculate($filePath)
+    public static function addFile($filePath)
     {
-        $file = Yii::getAlias($filePath);
+        $filePath = Yii::getAlias($filePath);
+        $fileName = pathinfo($filePath, PATHINFO_FILENAME);
+        $fileTime = filemtime($filePath);
+
+        $text = Text::find()->andWhere(['name' => $fileName])->one();
+
+        if ($text && $text->file_time == $fileTime){
+            return ;
+        } else {
+            Text::deleteAll([['name' => $fileName]]);
+            $text = new Text();
+        }
+
+        $text->attributes = [
+            'name' => $fileName,
+            'file_path' => $filePath,
+            'file_time' => $fileTime,
+            'status' => Text::STATUS_DEFAULT,
+            'length' => filesize($filePath),
+        ];
+        if (!$text->save()) {
+            throw new ErrorException('Error!');
+        }
+    }
+
+    /**
+     * @param Text $textModel
+     */
+    public static function calculateText(Text $textModel)
+    {
+        $file = Yii::getAlias($textModel->file_path);
         $text = file_get_contents($file);
         preg_match_all('/[^\W\d][\w]*/', $text, $words);
 
         $filterWords = static::filterStopWords($words[0]);
-//        var_dump($words[0]);
-//        var_dump(static::getStopWords());
 
         $countWords = array_count_values($filterWords);
 
-        $textModel = new Text([
-            'filePath' => $file,
-            'name' => pathinfo($file, PATHINFO_FILENAME),
-            'count_words' => array_sum($countWords),
-            'length' => mb_strlen($text),
-        ]);
-        if (!$textModel->save()) {
-            throw new ErrorException('Error!');
-        }
-
         foreach ($countWords as $word => $count) {
-            $word = Word::getWordByName($word);
-            $textModel->link('words', $word, [
+            $wordModel = Word::getWordByName($word);
+            $textModel->link('words', $wordModel, [
                 'count_words' => $count,
-                'context' => '',
+                'context' => static::getContext($word, $text),
             ]);
         }
+
+        $textModel->count_words = array_sum($countWords);
+        $textModel->status = Text::STATUS_PROCESSED;
+        $textModel->save();
 
         return ;
     }
@@ -86,44 +160,143 @@ class Dictionary
      */
     public static function getStopWords()
     {
-        if (!static::$stopWords) {
+        if (empty(static::$stopWords)) {
             static::$stopWords = explode(PHP_EOL, file_get_contents(__DIR__.DIRECTORY_SEPARATOR.'stop_words.txt'));
         }
         return static::$stopWords;
     }
 
-    public static function truncate()
+    /**
+     * @param string $path
+     * @return mixed
+     */
+    public static function getFiles($path = '')
     {
-        TextWord::deleteAll();
-        Text::deleteAll();
-        Word::deleteAll();
+        //load files and check exists in DB
+        if (empty(static::$files)) {
+
+            if (empty($path)) {
+                $path = Yii::getAlias('@app/files');
+            }
+            $handle = opendir($path);
+            while (($file = readdir($handle)) !== false) {
+                if (is_file($file) || pathinfo($path . DIRECTORY_SEPARATOR . $file, PATHINFO_EXTENSION) == 'txt') {
+                    static::$files[] = $path . DIRECTORY_SEPARATOR . $file;
+                }
+            }
+            closedir($handle);
+        }
+
+        return static::$files;
     }
 
     /**
-     * @param string $path
-     * @return int
+     * @return mixed
      */
-    public static function calculateMultiple($path = '')
+    public static function getAnswer()
     {
-        static::truncate();
+        $result['status'] = 'processed';
+        $textProcessed = Text::find()->count();
+        $result['load_text'] = [
+            Text::STATUS_NOT_PROCESSED => count(self::getFiles()) - $textProcessed,
+            Text::STATUS_PROCESSED => $textProcessed,
+        ];
+        $result['processed_text'] = [
+            Text::STATUS_NOT_PROCESSED => 0,
+            Text::STATUS_PROCESSED => 0,
+        ];
+        $result['processed_lemma'] = [
+            Text::STATUS_NOT_PROCESSED => 0,
+            Text::STATUS_PROCESSED => 0,
+        ];
 
-        $files = [];
-        if (empty($path)) {
-            $path = Yii::getAlias('@app/files');
+        $groupText = Text::find()->select(['status', 'count' => 'COUNT(*)'])
+            ->groupBy('status')
+            ->asArray()->all();
+        foreach ($groupText as $group) {
+            $result['processed_text'][$group['status']] = $group['count'];
         }
-        $handle = opendir($path);
-        while (($file = readdir($handle)) !== false) {
-            if (is_file($file) || pathinfo($path.DIRECTORY_SEPARATOR.$file, PATHINFO_EXTENSION) == 'txt') {
-                $files[] = $path.DIRECTORY_SEPARATOR.$file;
+
+        $result['load_text']['percent'] = static::getPercent($result['load_text']);
+        $result['processed_text']['percent'] = static::getPercent($result['processed_text']);
+        $result['processed_lemma']['percent'] = static::getPercent($result['processed_lemma']);
+
+        if ($result['processed_text']['percent'] == 100 && !Word::find()->andWhere(['score' => NULL])->exists()) {
+            $result['status'] = 'complete';
+        }
+        return $result;
+    }
+
+    /**
+     * @param string $word
+     * @param string $text
+     * @return mixed
+     */
+    protected static function getContext($word, $text)
+    {
+        preg_match_all("/.*?[.?!](?:\s|$)/s", $text,$sentences);
+
+        foreach ($sentences[0] as $sentence) {
+            if (false !== mb_stripos($sentence, $word)) {
+                return trim($sentence);
             }
         }
-        closedir($handle);
+        return null;
+    }
 
-        $count = 0;
-        foreach ($files as $file) {
-            static::calculate($file);
-            $count++;
+    /**
+     * @param array $state
+     * @return float|int
+     */
+    protected static function getPercent(array $state)
+    {
+        if (empty($state[Text::STATUS_NOT_PROCESSED]) && empty($state[Text::STATUS_PROCESSED])) {
+            return 0;
         }
-        return $count;
+        return (int)100 * $state[Text::STATUS_PROCESSED] /
+            ($state[Text::STATUS_NOT_PROCESSED] + $state[Text::STATUS_PROCESSED]);
+    }
+
+    /**
+     *
+     */
+    protected static function calculateSum()
+    {
+        $countText = TextWord::find()->select(['COUNT(DISTINCT text_id)'])->scalar();
+        $countSumWords = TextWord::find()->sum('count_words');
+
+//        $useWords = TextWord::find()
+//            ->select(['word_id', 'COUNT(text_id)', 'SUM(count_words)', 'context'])
+//            ->groupBy('word_id')
+//            ->asArray()->all();
+
+        if ($countText && $countSumWords) {
+            $useWords = TextWord::find()
+                ->select([
+                    'word_id',
+                    'dispersion' => 'COUNT(text_id) / ' . $countText,
+                    'frequency' => 'SUM(count_words) / ' . $countSumWords,
+                ])
+                ->groupBy('word_id')
+                ->asArray()->all();
+
+            foreach ($useWords as $word) {
+                Word::updateAll([
+                    'frequency' => $word['frequency'],
+                    'dispersion' => $word['dispersion'],
+                    'score' => $word['frequency'] / $word['dispersion'],
+                ], ['id' => $word['word_id']]);
+            }
+        }
+    }
+
+    /**
+     * @return bool
+     */
+    protected static function checkTimeToEnd()
+    {
+        $time = microtime(true) - $_SERVER['REQUEST_TIME_FLOAT'];
+
+        return $time > self::MAX_EXECUTION_TIME;
     }
 }

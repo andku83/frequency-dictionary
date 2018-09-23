@@ -1,4 +1,4 @@
-var modal = $('<div class="modal fade" tabindex="-1" role="dialog">' +
+let modal = $('<div class="modal fade" tabindex="-1" role="dialog">' +
     '<div class="modal-dialog" role="document">' +
     '<div class="modal-content">' +
     '<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span></span></button>' +
@@ -14,7 +14,7 @@ $(document).ready($(function () {
 
     // show modal form
     $(document).on('click', '.show-modal', function () {
-        var elem = $(this);
+        let elem = $(this);
         showModal(elem.data('id'), elem.attr('href'));
         return false;
     });
@@ -23,7 +23,7 @@ $(document).ready($(function () {
         if ($('#' + id).length) {
             $('#' + id).modal('show');
         } else {
-            var modal_copy = modal.clone();
+            let modal_copy = modal.clone();
             modal_copy
                 .attr('id', id)
                 .appendTo($('body'))
@@ -31,7 +31,7 @@ $(document).ready($(function () {
                 .load(
                     href,
                     function (response, status, xhr) {
-                        if (response && status == 'success') {
+                        if (response && status === 'success') {
                             $('#' + id).modal('show');
                         } else {
                             window.location.reload();
@@ -39,5 +39,55 @@ $(document).ready($(function () {
                     }
                 );
         }
+    }
+
+    let state = 'paused';
+    $(document).on('click', '.btn-control button', function(){
+        let action = $(this).data('action');
+
+        if ('reset' === action) {
+            state = "paused";
+            $.ajax({
+                url: '/reset?reset=1',
+            }).done(function (data) {
+                $.pjax.reload('#process', {
+                    url: '/process',
+                    replace: false,
+                });
+            });
+        } else if ('start' === action) {
+            state = 'process';
+
+            $(this).addClass('disabled');
+            process();
+
+        } else if ('pause' === action) {
+            state = 'paused';
+        }
+
+    });
+
+    function process() {
+        $('.btn-control button[data-action=start]').addClass('disabled');
+
+        $.ajax({
+            url: "/processing",
+        }).done(function(data) {
+            $('.btn-control button[data-action=start]').removeClass('disabled');
+
+            if (data['html']) {
+                $('#process .all-progress').html(data['html']);
+            }
+            if (data['status'] === 'complete') {
+                state = "paused";
+                $.pjax.reload('#word-list', {
+                    replace: false,
+                });
+            }
+
+            if (state === 'process') {
+                setTimeout(process, 1);
+            }
+        });
     }
 }));

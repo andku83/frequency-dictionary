@@ -6,17 +6,22 @@ namespace app\models;
  * This is the model class for table "{{%word}}".
  *
  * @property int $id
+ * @property string $headword
  * @property string $lemma
  * @property string $score
  * @property string $frequency
  * @property string $dispersion
- * @property string $context
  *
  * @property TextWord[] $textWords
  * @property TextWord $textWord
  */
 class Word extends \yii\db\ActiveRecord
 {
+    /**
+     * @var Word[]
+     */
+    static $words = [];
+
     /**
      * {@inheritdoc}
      */
@@ -32,8 +37,8 @@ class Word extends \yii\db\ActiveRecord
     {
         return [
             [['score', 'frequency', 'dispersion'], 'number'],
-            [['context'], 'safe'],
-            [['lemma'], 'string', 'max' => 255],
+            [['headword'], 'string', 'max' => 255],
+            [['lemma'], 'string'],
         ];
     }
 
@@ -44,11 +49,11 @@ class Word extends \yii\db\ActiveRecord
     {
         return [
             'id' => 'ID',
+            'headword' => 'Headword',
             'lemma' => 'Lemma',
             'score' => 'Score',
             'frequency' => 'Frequency',
             'dispersion' => 'Dispersion',
-            'context' => 'Context',
         ];
     }
 
@@ -57,8 +62,8 @@ class Word extends \yii\db\ActiveRecord
      */
     public function getTextWords()
     {
-        return $this->hasMany(TextWord::class, ['word_id' => 'id']
-        )->inverseOf('word');
+        return $this->hasMany(TextWord::class, ['word_id' => 'id'])
+            ->inverseOf('word');
     }
 
     /**
@@ -66,8 +71,9 @@ class Word extends \yii\db\ActiveRecord
      */
     public function getTextWord()
     {
-        return $this->hasOne(TextWord::class, ['word_id' => 'id']
-        )->inverseOf('word');
+        return $this->hasOne(TextWord::class, ['word_id' => 'id'])
+            ->groupBy('word_id')
+            ->inverseOf('word');
     }
 
     /**
@@ -94,12 +100,15 @@ class Word extends \yii\db\ActiveRecord
      */
     public static function getWordByName($name)
     {
-        $word = self::find()->byName($name)->one();
-        if (!$word) {
-            $word = new Word(['lemma' => $name]);
-            $word->save();
+        if (!isset(static::$words[$name])) {
+            $word = self::find()->byName($name)->one();
+            if (!$word) {
+                $word = new Word(['headword' => $name]);
+                $word->save();
+            }
+            static::$words[$name] = $word;
         }
 
-        return $word;
+        return static::$words[$name];
     }
 }

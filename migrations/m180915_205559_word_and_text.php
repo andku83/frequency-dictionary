@@ -19,17 +19,20 @@ class m180915_205559_word_and_text extends Migration
 
         $this->createTable("{{%word}}", [
             'id' => $this->primaryKey(),
-            'lemma' => $this->string(),
-            'score' => $this->decimal(),
-            'frequency' => $this->decimal(),
-            'dispersion' => $this->decimal(),
+            'headword' => $this->string(),
+            'lemma' => $this->text(),
+            'score' => $this->decimal(9, 6),
+            'frequency' => $this->decimal(9, 6),
+            'dispersion' => $this->decimal(9, 6),
         ], $tableOptions);
 
         $this->createTable("{{%text}}", [
             'id' => $this->primaryKey(),
             'name' => $this->string(),
-            'filePath' => $this->string(),
-            'length' => $this->integer(),
+            'file_path' => $this->string(),
+            'file_time' => $this->integer()->unsigned(),
+            'status' => $this->boolean(),
+            'length' => $this->bigInteger()->unsigned(),
             'count_words' => $this->integer(),
         ], $tableOptions);
 
@@ -41,6 +44,8 @@ class m180915_205559_word_and_text extends Migration
         ], $tableOptions);
 
         $this->createIndex('idx-text_word', '{{%text_word}}', ['text_id',  'word_id']);
+        $this->addPrimaryKey('pk-text_word', '{{%text_word}}', ['text_id',  'word_id']);
+
         $this->addForeignKey('fk-text_word-text', '{{%text_word}}', 'text_id', '{{%text}}', 'id', 'CASCADE', 'CASCADE');
         $this->addForeignKey('fk-text_word-word', '{{%text_word}}', 'word_id', '{{%word}}', 'id', 'CASCADE', 'CASCADE');
     }

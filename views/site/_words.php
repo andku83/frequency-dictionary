@@ -27,25 +27,48 @@ if (empty($searchModel) || empty($dataProvider)) {
     'filterModel' => $searchModel,
     'columns' => [
 //        'id',
-        'score',
+        'score:decimal',
         [
-            'attribute' => 'lemma',
+            'attribute' => 'headword',
             'format' => 'raw',
             'value' => function (Word $model) {
-                return Html::a($model->lemma, Url::to(['/site/show-word', 'id' => $model->id], ['class' => 'show-word']));
+                return <<<HTML
+        <a href="#" class="modal-get">$model->headword</a>
+        <div class="hidden">$model->lemma</div>
+HTML;
             },
         ],
 //        'lemma',
-        'frequency',
-        'dispersion',
+        'frequency:decimal',
+        'dispersion:decimal',
         [
             'attribute' => 'context',
             'format' => 'raw',
             'value' => function (Word $model) {
-                return ArrayHelper::getValue($model->textWord, 'context') . ' ' . ArrayHelper::getValue($model->textWord, 'text.name');
+                return '<div class="context-block">' .
+                    '<div class="text-name">' .
+                        ArrayHelper::getValue($model->textWord, 'text.name') .
+                    '</div><div class="context">' .
+                        ArrayHelper::getValue($model->textWord, 'context') .
+                    '</div></div>';
             },
-        ],
+],
     ],
 ]); ?>
 
 <?php Pjax::end(); ?>
+
+<?= \yii\bootstrap\Modal::widget([
+    'id' => 'popover-modal',
+    'header' => 'WordNet',
+]) ?>
+
+<?php $this->registerJs(<<<JS
+$('body').on('click', '.modal-get', function (e) {
+    e.preventDefault();
+    let modal = $('#popover-modal');
+    modal.find('.modal-body').html($(this).siblings('.hidden').html());
+    modal.modal('show');
+});
+JS
+); ?>

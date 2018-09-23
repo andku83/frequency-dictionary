@@ -39,7 +39,7 @@ AppAsset::register($this);
         'options' => ['class' => 'navbar-nav navbar-right'],
         'items' => [
             ['label' => 'Text Corpus', 'url' => ['/site/text-load'], 'linkOptions' => ['data-id' => 'text-load', 'class' => 'show-modal']],
-            ['label' => 'Processing', 'url' => ['/site/processing']],
+            ['label' => 'Processing', 'url' => ['/site/process'], 'linkOptions' => ['data-id' => 'text-process', 'class' => 'show-modal']],
             ['label' => 'Frequency Dictionary', 'url' => ['/site/dictionary']],
             ['label' => 'Help', 'url' => ['/site/help']],
 //            ['label' => 'Home', 'url' => ['/site/index']],

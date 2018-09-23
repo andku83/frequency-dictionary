@@ -4,9 +4,11 @@ namespace app\controllers;
 
 use app\components\dictionary\Dictionary;
 use app\models\search\WordSearch;
+use app\models\Text;
 use Yii;
 use yii\filters\AccessControl;
 use yii\web\Controller;
+use yii\web\NotFoundHttpException;
 use yii\web\Response;
 use yii\filters\VerbFilter;
 use app\models\LoginForm;
@@ -21,7 +23,7 @@ class SiteController extends Controller
     {
         return [
             'access' => [
-                'class' => AccessControl::className(),
+                'class' => AccessControl::class,
                 'only' => ['logout'],
                 'rules' => [
                     [
@@ -32,7 +34,7 @@ class SiteController extends Controller
                 ],
             ],
             'verbs' => [
-                'class' => VerbFilter::className(),
+                'class' => VerbFilter::class,
                 'actions' => [
                     'logout' => ['post'],
                 ],
@@ -66,20 +68,68 @@ class SiteController extends Controller
         return $this->render('index');
     }
 
+    public function actionDictionary()
+    {
+        return $this->render('dictionary');
+    }
+
+    public function actionHelp()
+    {
+        return $this->render('help');
+    }
+
+    /**
+     * @param $id
+     * @return string
+     * @throws NotFoundHttpException
+     */
+    public function actionShowText($id)
+    {
+        $text = Text::find()->andWhere(['id' => $id])->one();
+
+        if (Yii::$app->request->isAjax) {
+            $this->layout = false;
+        }
+
+        if (!$text) throw new NotFoundHttpException();
+
+        $data = file_get_contents($text->file_path);
+
+        return '<pre style="white-space: pre-line">'. $data .'</pre>';
+    }
+
     public function actionTextLoad()
     {
         if (Yii::$app->request->isAjax) {
             $this->layout = false;
-            $this->renderAjax('text-load');
         }
         return $this->render('text-load');
     }
 
+    public function actionProcess()
+    {
+        if (Yii::$app->request->isAjax) {
+            $this->layout = false;
+        }
+        return $this->render('process', ['result' => Dictionary::getAnswer()]);
+    }
+
     public function actionProcessing()
     {
-        Dictionary::calculateMultiple();
+        $this->layout = false;
 
-        return $this->redirect(['/site/index']);
+        $result = Dictionary::calculateMultiple();
+
+        $result['html'] = $this->render('_processing', ['result' => $result]);
+
+        return $this->asJson($result);
+    }
+
+    public function actionReset($reset = 0)
+    {
+        if ($reset) Dictionary::truncate();
+
+        return $this->asJson(true);
     }
 
     /**

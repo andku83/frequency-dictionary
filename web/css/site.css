@@ -116,12 +116,32 @@ a.desc:after {
 
 
 
+.btn-control {
+    text-align: center;
+}
+.btn-control button:not(:first-child) {
+    margin-left: 20px;
+}
+
+.context-block .text-name {
+    max-width: 20%;
+    display: inline-block;
+}
+.context-block .context {
+    float: right;
+    max-width: 80%;
+    display: inline-block;
+}
 
 
+#popover-modal .modal-dialog {
+    max-width: 1000px;
+    margin: 80px auto;
+}
 
 @media (min-width: 800px) {
     .modal-dialog {
         width: auto;
-        margin: 30px 20px;
+        margin: 80px 80px;
     }
 }
