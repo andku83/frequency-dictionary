@@ -7,13 +7,13 @@ namespace app\models;
  *
  * @property int $id
  * @property string $headword
- * @property string $lemma
  * @property string $score
  * @property string $frequency
  * @property string $dispersion
  *
  * @property TextWord[] $textWords
  * @property TextWord $textWord
+ * @property Glossary $glossary
  */
 class Word extends \yii\db\ActiveRecord
 {
@@ -38,7 +38,6 @@ class Word extends \yii\db\ActiveRecord
         return [
             [['score', 'frequency', 'dispersion'], 'number'],
             [['headword'], 'string', 'max' => 255],
-            [['lemma'], 'string'],
         ];
     }
 
@@ -50,7 +49,6 @@ class Word extends \yii\db\ActiveRecord
         return [
             'id' => 'ID',
             'headword' => 'Headword',
-            'lemma' => 'Lemma',
             'score' => 'Score',
             'frequency' => 'Frequency',
             'dispersion' => 'Dispersion',
@@ -86,6 +84,14 @@ class Word extends \yii\db\ActiveRecord
     }
 
     /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getGlossary()
+    {
+        return $this->hasOne(Glossary::class, ['headword' => 'headword']);
+    }
+
+    /**
      * {@inheritdoc}
      * @return \app\models\query\WordQuery the active query used by this AR class.
      */
@@ -96,14 +102,14 @@ class Word extends \yii\db\ActiveRecord
 
     /**
      * @param $name
-     * @return Word|array|null
+     * @return self
      */
     public static function getWordByName($name)
     {
         if (!isset(static::$words[$name])) {
             $word = self::find()->byName($name)->one();
             if (!$word) {
-                $word = new Word(['headword' => $name]);
+                $word = new self(['headword' => $name]);
                 $word->save();
             }
             static::$words[$name] = $word;

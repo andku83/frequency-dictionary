@@ -20,10 +20,9 @@ class m180915_205559_word_and_text extends Migration
         $this->createTable("{{%word}}", [
             'id' => $this->primaryKey(),
             'headword' => $this->string(),
-            'lemma' => $this->text(),
-            'score' => $this->decimal(9, 6),
-            'frequency' => $this->decimal(9, 6),
-            'dispersion' => $this->decimal(9, 6),
+            'score' => $this->decimal(10, 7),
+            'frequency' => $this->decimal(10, 7),
+            'dispersion' => $this->decimal(10, 7),
         ], $tableOptions);
 
         $this->createTable("{{%text}}", [

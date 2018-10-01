@@ -4,12 +4,12 @@ namespace app\models\search;
 
 use yii\base\Model;
 use yii\data\ActiveDataProvider;
-use app\models\Word;
+use app\models\Glossary;
 
 /**
- * WordSearch represents the model behind the search form of `app\models\Word`.
+ * GlossarySearch represents the model behind the search form of `app\models\Glossary`.
  */
-class WordSearch extends Word
+class GlossarySearch extends Glossary
 {
     /**
      * {@inheritdoc}
@@ -18,8 +18,7 @@ class WordSearch extends Word
     {
         return [
             [['id'], 'integer'],
-            [['headword'], 'string'],
-//            [['score', 'frequency', 'dispersion'], 'number'],
+            [['headword'/*, 'description'*/], 'safe'],
         ];
     }
 
@@ -41,20 +40,12 @@ class WordSearch extends Word
      */
     public function search($params)
     {
-        $query = Word::find()->with(['textWord.text', 'glossary']);
+        $query = Glossary::find();
 
         // add conditions that should always apply here
 
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
-            'sort' => [
-                'defaultOrder' => [
-                    'score' => SORT_DESC,
-                    'headword' => SORT_ASC,
-                    'frequency' => SORT_DESC,
-                    'dispersion' => SORT_DESC,
-                ]
-            ]
         ]);
 
         $this->load($params);
@@ -68,19 +59,12 @@ class WordSearch extends Word
         // grid filtering conditions
         $query->andFilterWhere([
             'id' => $this->id,
-//            'headword' => $this->headword,
-//            'score' => $this->score,
-//            'frequency' => $this->frequency,
-//            'dispersion' => $this->dispersion,
         ]);
 
-        $query->andFilterWhere(['like', 'headword', $this->headword]);
+        $query->andFilterWhere(['like', 'headword', $this->headword])
+//            ->andFilterWhere(['like', 'description', $this->description])
+        ;
 
         return $dataProvider;
-    }
-
-    public function formName()
-    {
-        return '';
     }
 }

@@ -27,20 +27,24 @@ if (empty($searchModel) || empty($dataProvider)) {
     'filterModel' => $searchModel,
     'columns' => [
 //        'id',
-        'score:decimal',
+        'score',
         [
             'attribute' => 'headword',
             'format' => 'raw',
             'value' => function (Word $model) {
+                $description = 'No definition '. Html::a('Add', '');
+                if ($model->glossary) {
+                    $description = Html::tag('strong', $model->glossary->headword) . '<br>' . $model->glossary->description;
+                }
+
                 return <<<HTML
         <a href="#" class="modal-get">$model->headword</a>
-        <div class="hidden">$model->lemma</div>
+        <div class="hidden">$description</div>
 HTML;
             },
         ],
-//        'lemma',
-        'frequency:decimal',
-        'dispersion:decimal',
+        'frequency',
+        'dispersion',
         [
             'attribute' => 'context',
             'format' => 'raw',
@@ -60,7 +64,7 @@ HTML;
 
 <?= \yii\bootstrap\Modal::widget([
     'id' => 'popover-modal',
-    'header' => 'WordNet',
+    'header' => 'Glossary',
 ]) ?>
 
 <?php $this->registerJs(<<<JS

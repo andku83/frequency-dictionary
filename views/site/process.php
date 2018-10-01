@@ -26,4 +26,3 @@ use yii\widgets\Pjax;
 
 </div>
 <?php Pjax::end(); ?>
-

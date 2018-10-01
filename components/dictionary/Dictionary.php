@@ -3,6 +3,7 @@
 namespace app\components\dictionary;
 
 
+use app\models\Glossary;
 use app\models\Text;
 use app\models\TextWord;
 use app\models\Word;
@@ -110,17 +111,19 @@ class Dictionary
     {
         $file = Yii::getAlias($textModel->file_path);
         $text = file_get_contents($file);
-        preg_match_all('/[^\W\d][\w]*/', $text, $words);
+        preg_match_all('/[^\W\d][\w-]*/', $text, $words);
 
         $filterWords = static::filterStopWords($words[0]);
 
         $countWords = array_count_values($filterWords);
 
+        $sentences = static::textToSentences($text);
+
         foreach ($countWords as $word => $count) {
             $wordModel = Word::getWordByName($word);
             $textModel->link('words', $wordModel, [
                 'count_words' => $count,
-                'context' => static::getContext($word, $text),
+                'context' => static::getContext($word, $sentences),
             ]);
         }
 
@@ -164,6 +167,20 @@ class Dictionary
             static::$stopWords = explode(PHP_EOL, file_get_contents(__DIR__.DIRECTORY_SEPARATOR.'stop_words.txt'));
         }
         return static::$stopWords;
+    }
+
+    public static function loadGlossary()
+    {
+        $list = array_filter(explode(PHP_EOL, file_get_contents(Yii::getAlias('@app/files/glossary/glossary.txt'))));
+
+        foreach ($list as $string) {
+            if (mb_stripos($string, ' n. ')) {
+                $one = explode(' n. ', $string, 2);
+                $model = Glossary::getWordByName($one['0']);
+                $model->description = $one['1'];
+                $model->save(false);
+            }
+        }
     }
 
     /**
@@ -229,19 +246,45 @@ class Dictionary
 
     /**
      * @param string $word
-     * @param string $text
+     * @param array $sentences
      * @return mixed
      */
-    protected static function getContext($word, $text)
+    protected static function getContext($word, $sentences)
     {
-        preg_match_all("/.*?[.?!](?:\s|$)/s", $text,$sentences);
 
-        foreach ($sentences[0] as $sentence) {
-            if (false !== mb_stripos($sentence, $word)) {
+        foreach ($sentences as $sentence) {
+            $sentence_lower = mb_strtolower($sentence);
+            if (
+                false !== mb_stripos($sentence_lower, $word.' ')
+                || false !== mb_stripos($sentence_lower, $word.'.')
+                || false !== mb_stripos($sentence_lower, $word.',')
+                || false !== mb_stripos($sentence_lower, $word.')')
+            ) {
                 return trim($sentence);
             }
         }
         return null;
+    }
+
+    /**
+     * @param $text
+     * @return array
+     */
+    protected static function textToSentences($text)
+    {
+        $sentences = [];
+
+        preg_match_all("/(.*?([.?!]|(\.\[\d\]))(?:\s|$))/s",  $text,$sentenceGroups, PREG_PATTERN_ORDER);
+
+        foreach ($sentenceGroups[0] as $group) {
+            foreach (explode(PHP_EOL, $group) as $line) {
+                $sentences[] = $line;
+            }
+        }
+        $sentences = array_filter($sentences, function ($val){ return $val !== "\r";});
+        $sentences = array_filter($sentences);
+        $sentences = array_map('trim', $sentences);
+        return array_values($sentences);
     }
 
     /**
@@ -253,8 +296,8 @@ class Dictionary
         if (empty($state[Text::STATUS_NOT_PROCESSED]) && empty($state[Text::STATUS_PROCESSED])) {
             return 0;
         }
-        return (int)100 * $state[Text::STATUS_PROCESSED] /
-            ($state[Text::STATUS_NOT_PROCESSED] + $state[Text::STATUS_PROCESSED]);
+        return (int)(100 * $state[Text::STATUS_PROCESSED] /
+            ($state[Text::STATUS_NOT_PROCESSED] + $state[Text::STATUS_PROCESSED]));
     }
 
     /**
@@ -274,13 +317,15 @@ class Dictionary
             $useWords = TextWord::find()
                 ->select([
                     'word_id',
-                    'dispersion' => 'COUNT(text_id) / ' . $countText,
-                    'frequency' => 'SUM(count_words) / ' . $countSumWords,
+                    'dispersion' => "cast(COUNT(text_id) / $countText as decimal(10,8))",
+                    'frequency' => "cast(SUM(count_words) / $countSumWords as decimal(10,8))",
                 ])
                 ->groupBy('word_id')
-                ->asArray()->all();
+//                ->orderBy('frequency')
+                ->asArray();
+//                ->all();
 
-            foreach ($useWords as $word) {
+            foreach ($useWords->each(500) as $word) {
                 Word::updateAll([
                     'frequency' => $word['frequency'],
                     'dispersion' => $word['dispersion'],

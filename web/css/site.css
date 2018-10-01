@@ -123,13 +123,18 @@ a.desc:after {
     margin-left: 20px;
 }
 
+#text-list td {
+    word-break: break-all;
+}
 .context-block .text-name {
-    max-width: 20%;
+    width: 20%;
     display: inline-block;
+    word-wrap: break-word;
+    padding-right: 5px;
 }
 .context-block .context {
     float: right;
-    max-width: 80%;
+    width: 80%;
     display: inline-block;
 }
 

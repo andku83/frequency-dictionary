@@ -49,49 +49,77 @@ $(document).ready($(function () {
             state = "paused";
             $.ajax({
                 url: '/reset?reset=1',
-            }).done(function (data) {
-                $.pjax.reload('#process', {
-                    url: '/process',
-                    replace: false,
-                });
+                success: function (data) {
+                    $.pjax.reload('#process', {
+                        url: '/process',
+                        replace: false,
+                    }).done(function () {
+                        $.pjax.reload('#text-list', {
+                            url: '/dictionary',
+                            replace: false,
+                        }).done(function () {
+                            $.pjax.reload('#word-list', {
+                                url: '/dictionary',
+                                replace: false,
+                            });
+                        });
+                    });
+                }
             });
         } else if ('start' === action) {
             state = 'process';
 
-            $(this).addClass('disabled');
+            $(this).prop('disabled', true);
             process();
 
         } else if ('pause' === action) {
             state = 'paused';
+        } else if ('load-glossary' === action) {
+            $(this).prop('disabled', true);
+            $.ajax({
+                url: '/load-glossary',
+                success: function (data) {
+                    $('.btn-control button[data-action=load-glossary]').prop('disabled', false);
+                    $.pjax.reload('#glossary-pjax', {
+                        url: '/glossary',
+                        replace: false,
+                    });
+                },
+                error: function () {
+                    $('.btn-control button[data-action=load-glossary]').prop('disabled', false);
+                }
+            });
         }
 
     });
 
     function process() {
-        $('.btn-control button[data-action=start]').addClass('disabled');
+        $('.btn-control button[data-action=start]').prop('disabled', true);
 
         $.ajax({
             url: "/processing",
-        }).done(function(data) {
-            $('.btn-control button[data-action=start]').removeClass('disabled');
+            success: function (data) {
+                $('.btn-control button[data-action=start]').prop('disabled', false);
 
-            if (data['html']) {
-                $('#process .all-progress').html(data['html']);
-            }
-            if (data['status'] === 'complete') {
-                state = "paused";
-                $.pjax.reload('#word-list', {
-                    replace: false,
-                });
-            }
+                if (data['html']) {
+                    $('#process .all-progress').html(data['html']);
+                }
+                if (data['status'] === 'complete') {
+                    state = "paused";
+                    $.pjax.reload('#word-list', {
+                        replace: false,
+                    });
+                }
 
-            if (state === 'process') {
-                setTimeout(process, 1);
-            }
-        }).error(function (data) {
-            $('.btn-control button[data-action=start]').removeClass('disabled');
+                if (state === 'process') {
+                    setTimeout(process, 1);
+                }
+            },
+            error: function (data) {
+                $('.btn-control button[data-action=start]').prop('disabled', false);
 
-            alert('Error!')
+                alert('Error!')
+            }
         });
     }
 }));

@@ -73,6 +73,11 @@ class SiteController extends Controller
         return $this->render('dictionary');
     }
 
+    public function actionGlossary()
+    {
+        return $this->render('glossary');
+    }
+
     public function actionHelp()
     {
         return $this->render('help');
@@ -85,7 +90,7 @@ class SiteController extends Controller
      */
     public function actionShowText($id)
     {
-        $text = Text::find()->andWhere(['id' => $id])->one();
+        $text = Text::findOne(['id' => $id]);
 
         if (Yii::$app->request->isAjax) {
             $this->layout = false;
@@ -130,6 +135,13 @@ class SiteController extends Controller
     public function actionReset($reset = 0)
     {
         if ($reset) Dictionary::truncate();
+
+        return $this->asJson(true);
+    }
+
+    public function actionLoadGlossary()
+    {
+        Dictionary::loadGlossary();
 
         return $this->asJson(true);
     }
