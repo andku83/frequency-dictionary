@@ -3,6 +3,7 @@
 namespace app\controllers;
 
 use app\components\dictionary\Dictionary;
+use app\models\Glossary;
 use app\models\search\WordSearch;
 use app\models\Text;
 use Yii;
@@ -144,6 +145,27 @@ class SiteController extends Controller
         Dictionary::loadGlossary();
 
         return $this->asJson(true);
+    }
+
+    public function actionGlossaryEdit($headword = null)
+    {
+        $model = Glossary::findOne(['headword' => $headword]);
+        if (!$model) {
+            $model = new Glossary(['headword' => $headword]);
+        }
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            return $this->redirect(Yii::$app->request->referrer);
+        }
+
+        if (Yii::$app->request->isAjax) {
+            return $this->renderAjax('glossary-edit', [
+                'model' => $model,
+            ]);
+        }
+        return $this->render('glossary-edit', [
+            'model' => $model,
+        ]);
     }
 
     /**

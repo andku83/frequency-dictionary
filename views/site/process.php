@@ -17,6 +17,7 @@ use yii\widgets\Pjax;
     <button class="btn btn-success" data-action="start">Start</button>
     <button class="btn btn-warning" data-action="pause">Pause</button>
     <button class="btn btn-danger" data-action="reset">Reset</button>
+    <button class="btn btn-success" style="margin-left: 200px" data-action="load-glossary">Load Glossary</button>
 </div>
 <br>
 

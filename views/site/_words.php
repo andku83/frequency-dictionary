@@ -8,7 +8,6 @@ use app\models\Word;
 use app\models\search\WordSearch;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
-use yii\helpers\Url;
 use yii\widgets\Pjax;
 use yii\grid\GridView;
 
@@ -32,7 +31,7 @@ if (empty($searchModel) || empty($dataProvider)) {
             'attribute' => 'headword',
             'format' => 'raw',
             'value' => function (Word $model) {
-                $description = 'No definition '. Html::a('Add', '');
+                $description = 'No definition '. Html::a('Add', ['site/glossary-edit', 'headword' => $model->headword], ['data-id' => 'glossary-edit', 'class' => 'show-modal']);
                 if ($model->glossary) {
                     $description = Html::tag('strong', $model->glossary->headword) . '<br>' . $model->glossary->description;
                 }

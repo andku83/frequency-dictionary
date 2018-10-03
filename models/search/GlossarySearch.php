@@ -46,6 +46,11 @@ class GlossarySearch extends Glossary
 
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
+            'sort' => [
+                'defaultOrder' => [
+                    'headword' => SORT_ASC
+                ]
+            ]
         ]);
 
         $this->load($params);

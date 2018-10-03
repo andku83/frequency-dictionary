@@ -4,6 +4,8 @@ use app\models\Glossary;
 use app\models\search\GlossarySearch;
 use yii\widgets\Pjax;
 use yii\grid\GridView;
+use yii\helpers\Html;
+use yii\helpers\Url;
 
 /* @var $this yii\web\View */
 
@@ -18,9 +20,8 @@ if (empty($searchModel) || empty($dataProvider)) {
 
     <div class="body-content">
 
-        <div class="btn-control">
-            <button class="btn btn-success" data-action="load-glossary">Load Glossary</button>
-        </div>
+        <a href="<?= Url::to(['site/glossary-edit']) ?>" class="btn btn-success show-modal" data-id="glossary-edit">Add Glossary</a>
+        <br>
         <br>
 
         <?php Pjax::begin([
@@ -35,11 +36,8 @@ if (empty($searchModel) || empty($dataProvider)) {
                     'attribute' => 'headword',
                     'format' => 'raw',
                     'value' => function (Glossary $model) {
-                        return <<<HTML
-                        <a href="#" class="modal-get">$model->headword</a>
-                        <div class="hidden">$model->headword</div>
-HTML;
-                    },
+                        return Html::a($model->headword, ['site/glossary-edit', 'headword' => $model->headword], ['data-id' => 'glossary-edit', 'class' => 'show-modal']);
+                    }
                 ],
                 'description',
             ],
