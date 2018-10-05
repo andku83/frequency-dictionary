@@ -71,7 +71,7 @@ class Dictionary
 
         static::calculateSum();
 
-        return static::getAnswer();
+        return static::getAnswer(true);
     }
 
     /**
@@ -127,9 +127,8 @@ class Dictionary
         $text = static::readFile(Yii::getAlias($textModel->file_path));
 //        preg_match_all('/[^\W\d][\w-]*/', $text, $words);
 //        preg_match_all('~[^\W\s\d][\D\w][\w-]*~', $text, $words);
-        preg_match_all('~[^\W][\w-]*~', $text, $words);
-        $words = array_filter($words[0], function ($word){ return !preg_match("~\d~", $word); });
-
+        preg_match_all('~[^\W][\w-]*[\w]~', $text, $words);
+        $words = array_filter($words[0], function ($word){ return !preg_match("~\d~", $word) && (mb_strlen($word) > 1); });
         $filterWords = static::filterStopWords($words);
 
         $countWords = array_count_values($filterWords);
@@ -218,9 +217,10 @@ class Dictionary
     }
 
     /**
+     * @param bool $complete
      * @return mixed
      */
-    public static function getAnswer()
+    public static function getAnswer($complete = false)
     {
         $result['status'] = 'processed';
         $textProcessed = Text::find()->count();
@@ -232,7 +232,7 @@ class Dictionary
             Text::STATUS_NOT_PROCESSED => 0,
             Text::STATUS_PROCESSED => 0,
         ];
-        $result['processed_lemma'] = [
+        $result['filtering'] = [
             Text::STATUS_NOT_PROCESSED => 0,
             Text::STATUS_PROCESSED => 0,
         ];
@@ -244,11 +244,25 @@ class Dictionary
             $result['processed_text'][$group['status']] = $group['count'];
         }
 
+        if ($offset = Yii::$app->cache->get('dictionary-filterDuplicate-offset')) {
+            $countDuplicates = Word::find()
+                ->andWhere(new Expression('`headword` LIKE "%s"'))
+                ->count();
+            $remainingDuplicates = Word::find()->andWhere(new Expression('`headword` LIKE "%s"'))
+                ->andWhere(['>', 'headword', $offset])->count();
+
+            $result['filtering'] = [
+                Text::STATUS_NOT_PROCESSED => $remainingDuplicates,
+                Text::STATUS_PROCESSED => $countDuplicates - $remainingDuplicates,
+            ];
+        }
+
         $result['load_text']['percent'] = static::getPercent($result['load_text']);
         $result['processed_text']['percent'] = static::getPercent($result['processed_text']);
-        $result['processed_lemma']['percent'] = static::getPercent($result['processed_lemma']);
+        $result['filtering']['percent'] = static::getPercent($result['filtering']);
 
-        if ($result['processed_text']['percent'] == 100 && !Word::find()->andWhere(['score' => NULL])->exists()) {
+        if ($complete) {
+            $result['filtering']['percent'] = 100;
             $result['status'] = 'complete';
         }
         return $result;
@@ -340,7 +354,7 @@ class Dictionary
                 Word::updateAll([
                     'frequency' => $useW['frequency'],
                     'dispersion' => $useW['dispersion'],
-                    'score' => $useW['frequency'] / $useW['dispersion'],
+                    'score' => $useW['frequency'] * $useW['dispersion'],
                 ], ['id' => $useW['word_id']]);
             }
         }

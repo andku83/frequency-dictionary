@@ -26,3 +26,12 @@ use yii\bootstrap\Progress;
         'barOptions' => ['class' => $result['processed_text']['percent'] == 100 ? 'progress-bar-success' : 'progress-bar-info progress-bar-striped active'],
     ]) ?>
 </div>
+<div class="progress-process-text">
+
+    <label>Filter Words</label>
+    <?= Progress::widget([
+        'label' => $result['filtering']['percent'] . '%',
+        'percent' => $result['filtering']['percent'],
+        'barOptions' => ['class' => $result['filtering']['percent'] == 100 ? 'progress-bar-success' : 'progress-bar-info progress-bar-striped active'],
+    ]) ?>
+</div>
