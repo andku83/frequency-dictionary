@@ -9,6 +9,7 @@ use app\models\TextWord;
 use app\models\Word;
 use Yii;
 use yii\base\ErrorException;
+use yii\db\Expression;
 
 /**
  * Class Dictionary
@@ -40,22 +41,32 @@ class Dictionary
             static::truncate();
         }
 
-        foreach (static::getFiles($path) as $file) {
-            static::addFile($file);
+        $cache = Yii::$app->cache;
 
-            if (static::checkTimeToEnd()){
-                return static::getAnswer();
+        if (true ) {
+            foreach (static::getFiles($path) as $file) {
+                static::addFile($file);
+
+                if (static::checkTimeToEnd()) {
+                    return static::getAnswer();
+                }
             }
+            $cache->set('dictionary-files-end', true, 120);
         }
 
-        $texts = Text::find()->andWhere(['status' => Text::STATUS_NOT_PROCESSED])->all();
-        foreach ($texts as $text) {
+        $textsQuery = Text::find()->andWhere(['status' => Text::STATUS_NOT_PROCESSED]);
+        foreach ($textsQuery->each() as $text) {
 
             static::calculateText($text);
 
             if (static::checkTimeToEnd()){
                 return static::getAnswer();
             }
+        }
+
+        static::filterDuplicate();
+        if (self::checkTimeToEnd()) {
+            return self::getAnswer();
         }
 
         static::calculateSum();
@@ -68,6 +79,10 @@ class Dictionary
      */
     public static function truncate()
     {
+        Yii::$app->cache->delete('dictionary-files-end');
+        Yii::$app->cache->delete('dictionary-filterDuplicate-offset');
+        Yii::$app->cache->delete('dictionary-filterDuplicate-end');
+
         TextWord::deleteAll();
         Text::deleteAll();
         Word::deleteAll();
@@ -109,11 +124,13 @@ class Dictionary
      */
     public static function calculateText(Text $textModel)
     {
-        $file = Yii::getAlias($textModel->file_path);
-        $text = file_get_contents($file);
-        preg_match_all('/[^\W\d][\w-]*/', $text, $words);
+        $text = static::readFile(Yii::getAlias($textModel->file_path));
+//        preg_match_all('/[^\W\d][\w-]*/', $text, $words);
+//        preg_match_all('~[^\W\s\d][\D\w][\w-]*~', $text, $words);
+        preg_match_all('~[^\W][\w-]*~', $text, $words);
+        $words = array_filter($words[0], function ($word){ return !preg_match("~\d~", $word); });
 
-        $filterWords = static::filterStopWords($words[0]);
+        $filterWords = static::filterStopWords($words);
 
         $countWords = array_count_values($filterWords);
 
@@ -144,13 +161,6 @@ class Dictionary
         $filterWords = [];
         foreach ($words as $word) {
             $word = strtolower($word);
-//            if ($word == 'a') {
-//                var_dump($word);
-//                var_dump(ord($word));
-//                var_dump(($stopWords[0]));
-//                var_dump(ord($stopWords[0]));
-//                var_dump(array_search($word, $stopWords));
-//            }
             if (false === array_search($word, $stopWords)) {
                 $filterWords[] = $word;
             }
@@ -164,14 +174,14 @@ class Dictionary
     public static function getStopWords()
     {
         if (empty(static::$stopWords)) {
-            static::$stopWords = explode(PHP_EOL, file_get_contents(__DIR__.DIRECTORY_SEPARATOR.'stop_words.txt'));
+            static::$stopWords = explode(PHP_EOL, static::readFile(__DIR__.DIRECTORY_SEPARATOR.'stop_words.txt'));
         }
         return static::$stopWords;
     }
 
     public static function loadGlossary()
     {
-        $list = array_filter(explode(PHP_EOL, file_get_contents(Yii::getAlias('@app/files/glossary/glossary.txt'))));
+        $list = array_filter(explode(PHP_EOL, static::readFile(Yii::getAlias('@app/files/glossary/glossary.txt'))));
 
         foreach ($list as $string) {
             if (mb_stripos($string, ' n. ')) {
@@ -245,22 +255,38 @@ class Dictionary
     }
 
     /**
+     * Remove BOM
+     * @param string $path
+     * @return string $str
+     */
+    protected static  function readFile($path) {
+        $text = file_get_contents($path);
+
+        return static::removeBOM($text);
+    }
+
+    /**
+     * Remove BOM
+     * @param string $str
+     * @return string $str
+     */
+    protected static function removeBOM($str="") {
+        if(substr($str, 0, 3) == pack('CCC', 0xef, 0xbb, 0xbf)) {
+            $str = substr($str, 3);
+        }
+        return $str;
+    }
+
+    /**
      * @param string $word
      * @param array $sentences
      * @return mixed
      */
     protected static function getContext($word, $sentences)
     {
-
         foreach ($sentences as $sentence) {
-            $sentence_lower = mb_strtolower($sentence);
-            if (
-                false !== mb_stripos($sentence_lower, $word.' ')
-                || false !== mb_stripos($sentence_lower, $word.'.')
-                || false !== mb_stripos($sentence_lower, $word.',')
-                || false !== mb_stripos($sentence_lower, $word.')')
-            ) {
-                return trim($sentence);
+            if (preg_match("~(?<=^|\s|\W)($word)(?=\s|\W|$)~im", $sentence)) {
+                return ($sentence);
             }
         }
         return null;
@@ -272,19 +298,11 @@ class Dictionary
      */
     protected static function textToSentences($text)
     {
-        $sentences = [];
+        preg_match_all("/(([^\s].+?)(?:[.?!]|(\.\[\d\])|$)(?=[\s][A-Z]|$))/m",  $text,$sentenceGroups, PREG_PATTERN_ORDER);
+//        preg_match_all("/(([^\s].+?)(?:[.?!]|(\.\[\d\])|(?=[^\n]$))(?=\s[A-Z][^\n]|[^\n]$))/m",  $text,$sentenceGroups, PREG_PATTERN_ORDER);
 
-        preg_match_all("/(.*?([.?!]|(\.\[\d\]))(?:\s|$))/s",  $text,$sentenceGroups, PREG_PATTERN_ORDER);
-
-        foreach ($sentenceGroups[0] as $group) {
-            foreach (explode(PHP_EOL, $group) as $line) {
-                $sentences[] = $line;
-            }
-        }
-        $sentences = array_filter($sentences, function ($val){ return $val !== "\r";});
-        $sentences = array_filter($sentences);
-        $sentences = array_map('trim', $sentences);
-        return array_values($sentences);
+        $sentences = array_map('trim', $sentenceGroups[0]);
+        return $sentences;
     }
 
     /**
@@ -308,30 +326,67 @@ class Dictionary
         $countText = TextWord::find()->select(['COUNT(DISTINCT text_id)'])->scalar();
         $countSumWords = TextWord::find()->sum('count_words');
 
-//        $useWords = TextWord::find()
-//            ->select(['word_id', 'COUNT(text_id)', 'SUM(count_words)', 'context'])
-//            ->groupBy('word_id')
-//            ->asArray()->all();
-
         if ($countText && $countSumWords) {
             $useWords = TextWord::find()
                 ->select([
                     'word_id',
-                    'dispersion' => "cast(COUNT(text_id) / $countText as decimal(10,8))",
-                    'frequency' => "cast(SUM(count_words) / $countSumWords as decimal(10,8))",
+                    'dispersion' => "CAST(COUNT(text_id) / $countText as decimal(10,8))",
+                    'frequency' => "CAST(SUM(count_words) / $countSumWords as decimal(10,8))",
                 ])
                 ->groupBy('word_id')
-//                ->orderBy('frequency')
                 ->asArray();
-//                ->all();
 
-            foreach ($useWords->each(500) as $word) {
+            foreach ($useWords->each(500) as $useW) {
                 Word::updateAll([
-                    'frequency' => $word['frequency'],
-                    'dispersion' => $word['dispersion'],
-                    'score' => $word['frequency'] / $word['dispersion'],
-                ], ['id' => $word['word_id']]);
+                    'frequency' => $useW['frequency'],
+                    'dispersion' => $useW['dispersion'],
+                    'score' => $useW['frequency'] / $useW['dispersion'],
+                ], ['id' => $useW['word_id']]);
             }
+        }
+    }
+
+    protected static function filterDuplicate()
+    {
+        $cache = Yii::$app->cache;
+        if (true !== $cache->get('dictionary-filterDuplicate-end')) {
+            $duplicatesQuery = Word::find()
+                ->andWhere(new Expression('`headword` LIKE "%s"'))
+                ->orderBy('headword');
+
+            if ($offset = $cache->get('dictionary-filterDuplicate-offset')) {
+                $duplicatesQuery->andWhere(['>', 'headword', $offset]);
+            }
+            /** @var Word $duplicate */
+            foreach ($duplicatesQuery->each() as $duplicate) {
+                $word = null;
+                if (mb_substr($duplicate['headword'], -2) === 'es') {
+                    $word = Word::findOne(['headword' => mb_substr($duplicate['headword'], 0, -2)]);
+                }
+                if (!$word) {
+                    $word = Word::findOne(['headword' => mb_substr($duplicate['headword'], 0, -1)]);
+                }
+                if ($word) {
+                    $duplicateTextWords = $duplicate->getTextWords()->indexBy('text_id')->all();
+                    $textWords = $word->getTextWords()->indexBy('text_id')->all();
+
+                    foreach ($duplicateTextWords as $text_id => $dTW) {
+                        if (isset($textWords[$text_id])) {
+                            $textWords[$text_id]->count_words += $dTW->count_words;
+                            $textWords[$text_id]->save(false);
+                        } else {
+                            $dTW->text->link('words', $word, ['count_words' => $dTW->count_words, 'context' => $dTW->context]);
+                        }
+                    }
+                    $duplicate->unlinkAll('texts', true);
+                    $duplicate->delete();
+                }
+                $cache->set('dictionary-filterDuplicate-offset', $duplicate['headword'], 120);
+                if (self::checkTimeToEnd()) {
+                    return;
+                }
+            }
+            $cache->set('dictionary-filterDuplicate-end', true, 120);
         }
     }
 

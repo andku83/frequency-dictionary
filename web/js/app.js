@@ -106,8 +106,14 @@ $(document).ready($(function () {
                 }
                 if (data['status'] === 'complete') {
                     state = "paused";
-                    $.pjax.reload('#word-list', {
+                    $.pjax.reload('#text-list', {
+                        url: '/dictionary',
                         replace: false,
+                    }).done(function () {
+                        $.pjax.reload('#word-list', {
+                            url: '/dictionary',
+                            replace: false,
+                        });
                     });
                 }
 

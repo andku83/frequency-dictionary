@@ -2,6 +2,8 @@
 
 namespace app\models;
 
+use app\models\query\TextWordQuery;
+
 /**
  * This is the model class for table "{{%word}}".
  *
@@ -56,7 +58,7 @@ class Word extends \yii\db\ActiveRecord
     }
 
     /**
-     * @return \yii\db\ActiveQuery
+     * @return \yii\db\ActiveQuery|TextWordQuery
      */
     public function getTextWords()
     {
