@@ -24,9 +24,10 @@ if (empty($dataProvider)) {
 ]); ?>
 <?php //$totalSize = Yii::$app->formatter->asShortSize(1000*Text::find()->sum('length')) ?>
 <?php $totalSize = (int)(Text::find()->sum('length') / 1024) ?>
+<?php $totalWords = Text::find()->sum('count_words') ?>
 <?= GridView::widget([
     'dataProvider' => $dataProvider,
-    'summary' => "Total items <strong>$totalSize Kb</strong>",
+    'summary' => "Total items <strong>$totalSize Kb</strong> / words <strong>$totalWords</strong>",
     'filterModel' => false,
     'columns' => [
         [

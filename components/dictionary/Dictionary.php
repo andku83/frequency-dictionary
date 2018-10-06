@@ -128,8 +128,8 @@ class Dictionary
 //        preg_match_all('/[^\W\d][\w-]*/', $text, $words);
 //        preg_match_all('~[^\W\s\d][\D\w][\w-]*~', $text, $words);
         preg_match_all('~[^\W][\w-]*[\w]~', $text, $words);
-        $words = array_filter($words[0], function ($word){ return !preg_match("~\d~", $word) && (mb_strlen($word) > 1); });
-        $filterWords = static::filterStopWords($words);
+        $filterWords = array_filter($words[0], function ($word){ return !preg_match("~\d~", $word) && (mb_strlen($word) > 1); });
+        $filterWords = static::filterStopWords($filterWords);
 
         $countWords = array_count_values($filterWords);
 
@@ -143,7 +143,7 @@ class Dictionary
             ]);
         }
 
-        $textModel->count_words = array_sum($countWords);
+        $textModel->count_words = count($words[0]);
         $textModel->status = Text::STATUS_PROCESSED;
         $textModel->save();
 
