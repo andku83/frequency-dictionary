@@ -101,7 +101,7 @@ class SiteController extends Controller
 
         $data = file_get_contents($text->file_path);
 
-        return '<pre style="white-space: pre-wrap;">'. $data .'</pre>';
+        return '<pre style="white-space:pre-wrap;word-break:break-word;">'. $data .'</pre>';
     }
 
     public function actionTextLoad()
